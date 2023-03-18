@@ -88,17 +88,33 @@ class Comment(models.Model):
     )
 
     def __str__(self) -> str:
-        return self.text
+        return self.text[:15]
 
 
 class Follow(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='follower'
+        related_name='follower',
+        verbose_name='получатель',
+        help_text='оставить коммент'
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='following'
+        related_name='following',
+        verbose_name='отправитель',
+        help_text='отправитель'
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'author'),
+                name='уникальная связка'
+            )
+        ]
+        # не понял как этим пользоваться от слова совсем
+
+        def __str__(self):
+            return (f'{self.user} подписан на {self.author}')

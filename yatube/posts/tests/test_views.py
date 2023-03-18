@@ -48,6 +48,7 @@ class TestPostViews(TestCase):
             reverse(
                 'posts:post_edit', kwargs={'post_id': TestPostViews.post.pk}
             ): 'posts/create_post.html',
+            reverse('posts:follow_index'): 'posts/follow.html'
         }
         for reverse_name, template in pages_name_template.items():
             with self.subTest(reverse_name=reverse_name):
@@ -148,7 +149,11 @@ class TestPostViews(TestCase):
         )
         self.assertRedirects(response, redirect)
         self.assertEqual(Comment.objects.count(), comment_vol + 1)
-        self.assertTrue(Comment.objects.filter(text=form_data[0]).exists())
+        self.assertTrue(Comment.objects.filter(
+            text=form_data[0],
+            author=TestPostViews.post.author,
+            group=TestPostViews.group.id
+        ).exists())
 
     def test_cache(self):
         response_1 = self.guest_client.get(
@@ -204,6 +209,7 @@ class TestPostViews(TestCase):
         self.assertEqual(post.text, TestPostViews.post.text)
         self.assertEqual(post.author, TestPostViews.post.author)
         self.assertEqual(post.group, TestPostViews.post.group)
+        self.assertEqual(post.image, TestPostViews.post.image)
 
 
 class TestPaginator(TestCase):
@@ -266,3 +272,35 @@ class TestPaginator(TestCase):
                     len(response.context['page_obj']),
                     count - settings.MAX_POSTS
                 )
+
+
+class TetsFollow(TestCase):
+    def setUp(self) -> None:
+        self.auth_client = Client()
+        self.auth_client_2 = Client()
+        self.follower = User.objects.create(username='abobus1')
+        self.following = User.objects.create(username='abobus2')
+        self.auth_client.force_login(self.follower)
+        self.auth_client_2.force_login(self.following)
+        self.post = Post.objects.create(
+            author=self.following,
+            text='tets text'
+        )
+
+    def test_follow_index(self):
+        self.auth_client.get(
+            reverse(
+                'posts:profile_follow',
+                args=(self.following,)
+            )
+        )
+        self.assertEqual(Follow.objects.all().count(), 1)
+
+    def test_unfollow_index(self):
+        self.auth_client.get(
+            reverse(
+                'posts:profile_unfollow',
+                args=(self.following,)
+            )
+        )
+        self.assertEqual(Follow.objects.all().count(), 0)

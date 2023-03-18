@@ -45,6 +45,8 @@ class TestPostsUrls(TestCase):
         url_names = {
             '/create/': '/auth/login/?next=/create/',
             '/posts/1/edit/': '/auth/login/?next=/posts/1/edit/',
+            '/profile/abobobus/follow/':
+            '/auth/login/?next=/profile/abobobus/follow/'
         }
         for url, status in url_names.items():
             with self.subTest(url=url):
@@ -64,7 +66,9 @@ class TestPostsUrls(TestCase):
             '/posts/1/': 'posts/post_detail.html',
             '/create/': 'posts/create_post.html',
             '/posts/1/edit/': 'posts/create_post.html',
+            '/follow/': 'posts/follow.html',
         }
+
         for url, template in url_template.items():
             with self.subTest(template=template):
                 response = self.auth_client.get(url)

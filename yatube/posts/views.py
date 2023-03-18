@@ -9,11 +9,9 @@ from posts.utils import pages_paginator
 
 def index(request):
     '''Shows main page and last 10 posts.'''
-    title = 'Последние обновления на сайте'
     post_list = Post.objects.all()
     context = {
         'page_obj': pages_paginator(post_list, request),
-        'title': title,
     }
     return render(request, 'posts/index.html', context)
 
@@ -117,7 +115,6 @@ def follow_index(request):
     posts = Post.objects.filter(author__following__user=request.user)
     context = {
         'page_obj': pages_paginator(posts, request),
-        'title': 'follow'
     }
     return render(request, 'posts/follow.html', context)
 
@@ -133,8 +130,13 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    Follow.objects.filter(
+    obj = Follow.objects.filter(
         user=request.user,
         author=author
-    ).delete()
+    ).exists()
+    if obj:
+        Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).delete()
     return redirect('posts:follow_index')
