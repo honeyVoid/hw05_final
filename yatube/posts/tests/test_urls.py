@@ -41,6 +41,17 @@ class TestPostsUrls(TestCase):
                 response = self.guest_client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
+    def tets_pages_for_auth_client(self):
+        pages_list = (
+            '/profile/abobus/follow/',
+            '/profile/abobus/unfollow/',
+            '/posts/1/comment/'
+        )
+        for page in pages_list:
+            with self.subTest(page=page):
+                response = self.auth_client.get(page)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+
     def test_redirect_posts_urls(self):
         url_names = {
             '/create/': '/auth/login/?next=/create/',
@@ -70,6 +81,6 @@ class TestPostsUrls(TestCase):
         }
 
         for url, template in url_template.items():
-            with self.subTest(template=template):
+            with self.subTest(url=url):
                 response = self.auth_client.get(url)
                 self.assertTemplateUsed(response, template)

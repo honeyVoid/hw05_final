@@ -56,13 +56,13 @@ class Post(models.Model):
         blank=True
     )
 
-    def __str__(self):
-        '''Shows first 15 characters of text.'''
-        return self.text[:15]
-
     class Meta:
         '''Used for ordering posts by newest.'''
         ordering = ('-pub_date',)
+
+    def __str__(self):
+        '''Shows first 15 characters of text.'''
+        return self.text[:15]
 
 
 class Comment(models.Model):
@@ -108,13 +108,12 @@ class Follow(models.Model):
     )
 
     class Meta:
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=('user', 'author'),
                 name='уникальная связка'
-            )
-        ]
-        # не понял как этим пользоваться от слова совсем
+            ),
+        )
 
         def __str__(self):
             return (f'{self.user} подписан на {self.author}')

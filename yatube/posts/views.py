@@ -133,10 +133,7 @@ def profile_unfollow(request, username):
     obj = Follow.objects.filter(
         user=request.user,
         author=author
-    ).exists()
-    if obj:
-        Follow.objects.filter(
-            user=request.user,
-            author=author
-        ).delete()
+    )
+    if obj.exists():
+        obj.delete()
     return redirect('posts:follow_index')

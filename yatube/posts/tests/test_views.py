@@ -1,30 +1,49 @@
+import tempfile
+import shutil
+
 from django import forms
 from django.urls import reverse
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.conf import settings
-
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from posts.models import Group, Post, Comment, Follow
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 User = get_user_model()
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class TestPostViews(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username='abobus')
-
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test-slug',
             description='Тестовое описание',
         )
+        cls.img = (
+            b"\x47\x49\x46\x38\x39\x61\x02\x00"
+            b"\x01\x00\x80\x00\x00\x00\x00\x00"
+            b"\xFF\xFF\xFF\x21\xF9\x04\x00\x00"
+            b"\x00\x00\x00\x2C\x00\x00\x00\x00"
+            b"\x02\x00\x01\x00\x00\x02\x02\x0C"
+            b"\x0A\x00\x3B"
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=TestPostViews.img,
+            content_type='image/gif'
+        )
+
         cls.post = Post.objects.create(
             author=TestPostViews.user,
             text='test text',
-            group=TestPostViews.group
+            group=TestPostViews.group,
+            image=TestPostViews.uploaded
         )
 
     def setUp(self):
@@ -136,23 +155,20 @@ class TestPostViews(TestCase):
         expected = Post.objects.exclude(group=self.post.group)
         self.assertNotIn(expected, form_field)
 
-    def tets_comment(self):
+    def test_comment(self):
         comment_vol = Comment.objects.count()
         form_data = {'text': 'test comment'}
-        redirect = reverse('post:post_detail', args=(TestPostViews.id, ))
+        redirect = reverse('posts:post_detail', args=(TestPostViews.post.id, ))
         response = self.auth_client.post(
             reverse(
-                'posts:add_comment', args=(TestPostViews.id, ),
-                data=form_data,
-                follow=True
-            )
+                'posts:add_comment', kwargs={'post_id': TestPostViews.post.id},
+            ), data=form_data, follow=True
         )
         self.assertRedirects(response, redirect)
         self.assertEqual(Comment.objects.count(), comment_vol + 1)
         self.assertTrue(Comment.objects.filter(
-            text=form_data[0],
+            text=form_data['text'],
             author=TestPostViews.post.author,
-            group=TestPostViews.group.id
         ).exists())
 
     def test_cache(self):
@@ -204,6 +220,34 @@ class TestPostViews(TestCase):
             reverse('posts:follow_index')
         )
         self.assertEqual(len(response_2.context['page_obj']), 0)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+
+    def test_image_in_pages(self):
+        pages_list = (
+            reverse('posts:index'),
+            reverse(
+                'posts:group_list',
+                args=(self.group.slug,)
+            ),
+            reverse('posts:profile', kwargs={'username': self.post.author})
+        )
+        for page in pages_list:
+            with self.subTest(page=page):
+                response = self.guest_client.get(page)
+                self.check_post(response.context['page_obj'][0])
+
+    def test_image_in_post_detail(self):
+        response = self.guest_client.get(
+            reverse(
+                'posts:post_detail',
+                args=(self.post.id,)
+            )
+        )
+        self.check_post(response.context.get('post_detail'))
 
     def check_post(self, post):
         self.assertEqual(post.text, TestPostViews.post.text)
@@ -295,6 +339,9 @@ class TetsFollow(TestCase):
             )
         )
         self.assertEqual(Follow.objects.all().count(), 1)
+        self.assertTrue(
+            Follow.objects.filter(user=TestPostViews.user).exists()
+        )
 
     def test_unfollow_index(self):
         self.auth_client.get(
