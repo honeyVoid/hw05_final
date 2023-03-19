@@ -278,7 +278,7 @@ class TestPaginator(TestCase):
     def setUp(self):
         self.guest_client = Client()
 
-    def tets_firt_page(self):
+    def tets_first_page(self):
         pages_list = (
             reverse('posts:index'),
             reverse(
@@ -340,7 +340,10 @@ class TetsFollow(TestCase):
         )
         self.assertEqual(Follow.objects.all().count(), 1)
         self.assertTrue(
-            Follow.objects.filter(user=TestPostViews.user).exists()
+            Follow.objects.filter(
+                user=TestPostViews.user,
+                author=self.following
+            ).exists()
         )
 
     def test_unfollow_index(self):
